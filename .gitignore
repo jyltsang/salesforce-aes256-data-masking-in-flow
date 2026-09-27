@@ -8,6 +8,7 @@
 .localdevserver/
 deploy-options.json
 .localdev
+*.apxc linguist-language=Apex
 
 # LWC VSCode autocomplete
 **/lwc/jsconfig.json
