@@ -1,7 +1,4 @@
-public with sharing class FlowAESDataUnmaskingAction {
-
-    // Same 32-byte Base64 Encoded AES Key used for encryption
-    private static final String DEFAULT_AES_KEY = 'YOUR_GENERATED_BASE64_KEY_HERE';
+public with sharing class FlowAES256DataUnmaskingAction {
 
     public class UnmaskRequest {
         @InvocableVariable(required=true label='Object' description='Collection of records to unmask')
@@ -22,10 +19,23 @@ public with sharing class FlowAESDataUnmaskingAction {
         public String message;
     }
 
-    @InvocableMethod(label='Unmask and Decrypt Record Fields' description='Reads the encrypted audit log, decrypts fields, restores original values, and clears the log.')
+    @InvocableMethod(label='AES256 Decrypt and Unmask Record Fields' description='Reads the encrypted audit log, decrypts fields using Custom Metadata AES key, restores original values, and clears the log.')
     public static List<UnmaskResult> processRecords(List<UnmaskRequest> requests) {
         List<UnmaskResult> results = new List<UnmaskResult>();
-        Blob keyBlob = EncodingUtil.base64Decode(DEFAULT_AES_KEY);
+
+        // Retrieve AES key dynamically from Custom Metadata Type
+        Symmetric_Key_Config__mdt config = Symmetric_Key_Config__mdt.getInstance('Default_Key');
+        if (config == null || String.isBlank(config.AES_Key__c)) {
+            for (UnmaskRequest req : requests) {
+                UnmaskResult err = new UnmaskResult();
+                err.isSuccess = false;
+                err.message = 'ERROR: Symmetric Key Custom Metadata record (Default_Key) missing or blank.';
+                results.add(err);
+            }
+            return results;
+        }
+
+        Blob keyBlob = EncodingUtil.base64Decode(config.AES_Key__c.trim());
 
         for (UnmaskRequest req : requests) {
             UnmaskResult res = new UnmaskResult();

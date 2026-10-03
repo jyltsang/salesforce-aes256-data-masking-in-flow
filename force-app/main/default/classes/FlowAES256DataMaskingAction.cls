@@ -1,7 +1,4 @@
-public with sharing class FlowAESDataMaskingAction {
-
-    // PLACEHOLDER: Insert your 32-byte Base64 Encoded AES Key here
-    private static final String DEFAULT_AES_KEY = 'YOUR_GENERATED_BASE64_KEY_HERE';
+public with sharing class FlowAES256DataMaskingAction {
 
     public class MaskRequest {
         @InvocableVariable(required=true label='Object' description='Collection of records to mask')
@@ -25,10 +22,23 @@ public with sharing class FlowAESDataMaskingAction {
         public String message;
     }
 
-    @InvocableMethod(label='Mask and Encrypt Record Fields' description='Encrypts field values into a log, then wipes target fields on a collection of records.')
+    @InvocableMethod(label='AES256 Encrypt and Mask Record Fields' description='Encrypts field values into a log using Custom Metadata AES key, then wipes target fields on a collection of records.')
     public static List<MaskResult> processRecords(List<MaskRequest> requests) {
         List<MaskResult> results = new List<MaskResult>();
-        Blob keyBlob = EncodingUtil.base64Decode(DEFAULT_AES_KEY);
+
+        // Retrieve AES key dynamically from Custom Metadata Type
+        Symmetric_Key_Config__mdt config = Symmetric_Key_Config__mdt.getInstance('Default_Key');
+        if (config == null || String.isBlank(config.AES_Key__c)) {
+            for (MaskRequest req : requests) {
+                MaskResult err = new MaskResult();
+                err.isSuccess = false;
+                err.message = 'ERROR: Symmetric Key Custom Metadata record (Default_Key) missing or blank.';
+                results.add(err);
+            }
+            return results;
+        }
+
+        Blob keyBlob = EncodingUtil.base64Decode(config.AES_Key__c.trim());
 
         for (MaskRequest req : requests) {
             MaskResult res = new MaskResult();
@@ -96,7 +106,9 @@ public with sharing class FlowAESDataMaskingAction {
                     recordsToUpdate.add(record);
                 }
 
-                update recordsToUpdate;
+                if (!recordsToUpdate.isEmpty()) {
+                    update recordsToUpdate;
+                }
 
                 res.isSuccess = true;
                 res.message = 'SUCCESS: Processed ' + recordsToUpdate.size() + ' records.';
