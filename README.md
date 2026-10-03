@@ -32,7 +32,7 @@ Before deploying or running the Apex classes, you must generate a cryptographica
 #### Generating a Key via OpenSSL:
 Run the following command in your terminal:
    ```bash
-   openssl rand -base64 32```
+   openssl rand -base64 32
    ```
 The result should give you a 44-character string, 256-bit key 
 
